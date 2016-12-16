@@ -8,6 +8,9 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -69,6 +72,7 @@ public class Utils {
      * @param url     is the MMSC to check
      * @param proxy   is the proxy of the APN to check
      * @throws java.io.IOException when route cannot be established
+     * TODO: Android M and above are can not invoke requestRouteToHostAddress.
      */
     public static void ensureRouteToHost(Context context, String url, String proxy) throws IOException {
         ConnectivityManager connMgr =
@@ -88,7 +92,7 @@ public class Utils {
                     throw new IOException("Cannot establish route to proxy " + inetAddr);
                 }
             } catch (Exception e) {
-                Log.e(TAG, "Cannot establishh route to proxy " + inetAddr, e);
+                Log.e(TAG, "Cannot establish route to proxy " + inetAddr, e);
             }
         } else {
             Uri uri = Uri.parse(url);
@@ -103,7 +107,7 @@ public class Utils {
                     throw new IOException("Cannot establish route to proxy " + inetAddr);
                 }
             } catch (Exception e) {
-                Log.e(TAG, "Cannot establishh route to proxy " + inetAddr + " for " + url, e);
+                Log.e(TAG, "Cannot establish route to proxy " + inetAddr + " for " + url, e);
             }
         }
     }

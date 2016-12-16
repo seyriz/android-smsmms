@@ -409,11 +409,11 @@ public class Transaction {
             }
         } else {
             Log.v(TAG, "using lollipop method for sending sms");
-
-            if (settings.getUseSystemSending()) {
+            try {
                 Log.v(TAG, "using system method for sending");
                 sendMmsThroughSystem(context, subject, data, addresses);
-            } else {
+            } catch (MmsException e){
+                Log.w(TAG, "system method failed. using nokia method");
                 try {
                     MessageInfo info = getBytes(context, saveMessage, address.split(" "),
                             data.toArray(new MMSPart[data.size()]), subject);
@@ -422,8 +422,8 @@ public class Transaction {
                             info.location, null, null, null, null);
                     MmsNetworkManager manager = new MmsNetworkManager(context, Utils.getDefaultSubscriptionId());
                     request.execute(context, manager);
-                } catch (Exception e) {
-                    Log.e(TAG, "error sending mms", e);
+                } catch (Exception es) {
+                    Log.e(TAG, "error sending mms", es);
                 }
             }
         }
@@ -431,7 +431,7 @@ public class Transaction {
 
     public static MessageInfo getBytes(Context context, boolean saveMessage, String[] recipients,
                                        MMSPart[] parts, String subject)
-                throws MmsException {
+            throws MmsException {
         final SendReq sendRequest = new SendReq();
 
         // create send request addresses
@@ -555,65 +555,61 @@ public class Transaction {
     public static final int DEFAULT_PRIORITY = PduHeaders.PRIORITY_NORMAL;
 
     private static void sendMmsThroughSystem(Context context, String subject, List<MMSPart> parts,
-                                             String[] addresses) {
+                                             String[] addresses) throws MmsException{
+        final String fileName = "send." + String.valueOf(Math.abs(new Random().nextLong())) + ".dat";
+        File mSendFile = new File(context.getCacheDir(), fileName);
+
+        SendReq sendReq = buildPdu(context, addresses, subject, parts);
+        PduPersister persister = PduPersister.getPduPersister(context);
+        Uri messageUri = persister.persist(sendReq, Uri.parse("content://mms/outbox"),
+                true, settings.getGroup(), null);
+
+        Intent intent = new Intent(MmsSentReceiver.MMS_SENT);
+        intent.putExtra(MmsSentReceiver.EXTRA_CONTENT_URI, messageUri.toString());
+        intent.putExtra(MmsSentReceiver.EXTRA_FILE_PATH, mSendFile.getPath());
+        final PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                context, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+
+        Uri writerUri = (new Uri.Builder())
+                .authority(context.getPackageName() + ".MmsFileProvider")
+                .path(fileName)
+                .scheme(ContentResolver.SCHEME_CONTENT)
+                .build();
+        FileOutputStream writer = null;
+        Uri contentUri = null;
         try {
-            final String fileName = "send." + String.valueOf(Math.abs(new Random().nextLong())) + ".dat";
-            File mSendFile = new File(context.getCacheDir(), fileName);
-
-            SendReq sendReq = buildPdu(context, addresses, subject, parts);
-            PduPersister persister = PduPersister.getPduPersister(context);
-            Uri messageUri = persister.persist(sendReq, Uri.parse("content://mms/outbox"),
-                    true, settings.getGroup(), null);
-
-            Intent intent = new Intent(MmsSentReceiver.MMS_SENT);
-            intent.putExtra(MmsSentReceiver.EXTRA_CONTENT_URI, messageUri.toString());
-            intent.putExtra(MmsSentReceiver.EXTRA_FILE_PATH, mSendFile.getPath());
-            final PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                    context, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
-
-            Uri writerUri = (new Uri.Builder())
-                    .authority(context.getPackageName() + ".MmsFileProvider")
-                    .path(fileName)
-                    .scheme(ContentResolver.SCHEME_CONTENT)
-                    .build();
-            FileOutputStream writer = null;
-            Uri contentUri = null;
-            try {
-                writer = new FileOutputStream(mSendFile);
-                writer.write(new PduComposer(context, sendReq).make());
-                contentUri = writerUri;
-            } catch (final IOException e) {
-                Log.e(TAG, "Error writing send file", e);
-            } finally {
-                if (writer != null) {
-                    try {
-                        writer.close();
-                    } catch (IOException e) {
-                    }
-                }
-            }
-
-            Bundle configOverrides = new Bundle();
-            configOverrides.putBoolean(SmsManager.MMS_CONFIG_GROUP_MMS_ENABLED, settings.getGroup());
-            String httpParams = MmsConfig.getHttpParams();
-            if (!TextUtils.isEmpty(httpParams)) {
-                configOverrides.putString(SmsManager.MMS_CONFIG_HTTP_PARAMS, httpParams);
-            }
-            configOverrides.putInt(SmsManager.MMS_CONFIG_MAX_MESSAGE_SIZE, MmsConfig.getMaxMessageSize());
-
-            if (contentUri != null) {
-                SmsManagerFactory.createSmsManager(settings).sendMultimediaMessage(context,
-                        contentUri, null, configOverrides, pendingIntent);
-            } else {
-                Log.e(TAG, "Error writing sending Mms");
+            writer = new FileOutputStream(mSendFile);
+            writer.write(new PduComposer(context, sendReq).make());
+            contentUri = writerUri;
+        } catch (final IOException e) {
+            Log.e(TAG, "Error writing send file", e);
+        } finally {
+            if (writer != null) {
                 try {
-                    pendingIntent.send(SmsManager.MMS_ERROR_IO_ERROR);
-                } catch (PendingIntent.CanceledException ex) {
-                    Log.e(TAG, "Mms pending intent cancelled?", ex);
+                    writer.close();
+                } catch (IOException e) {
                 }
             }
-        } catch (Exception e) {
-            Log.e(TAG, "error using system sending method", e);
+        }
+
+        Bundle configOverrides = new Bundle();
+        configOverrides.putBoolean(SmsManager.MMS_CONFIG_GROUP_MMS_ENABLED, settings.getGroup());
+        String httpParams = MmsConfig.getHttpParams();
+        if (!TextUtils.isEmpty(httpParams)) {
+            configOverrides.putString(SmsManager.MMS_CONFIG_HTTP_PARAMS, httpParams);
+        }
+        configOverrides.putInt(SmsManager.MMS_CONFIG_MAX_MESSAGE_SIZE, MmsConfig.getMaxMessageSize());
+
+        if (contentUri != null) {
+            SmsManagerFactory.createSmsManager(settings).sendMultimediaMessage(context,
+                    contentUri, null, configOverrides, pendingIntent);
+        } else {
+            Log.e(TAG, "Error writing sending Mms");
+            try {
+                pendingIntent.send(SmsManager.MMS_ERROR_IO_ERROR);
+            } catch (PendingIntent.CanceledException ex) {
+                Log.e(TAG, "Mms pending intent cancelled?", ex);
+            }
         }
     }
 
@@ -808,6 +804,7 @@ public class Transaction {
         Uri res = context.getContentResolver().insert(partUri, mmsPartValue);
 
         // Add data to part
+        // Can not using this method if the app is not system default message app.
         OutputStream os = context.getContentResolver().openOutputStream(res);
         ByteArrayInputStream is = new ByteArrayInputStream(imageBytes);
         byte[] buffer = new byte[256];
