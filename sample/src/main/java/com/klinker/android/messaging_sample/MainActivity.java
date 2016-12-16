@@ -35,8 +35,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 
 import com.android.mms.service_alt.MmsConfigManager;
-import com.klinker.android.logger.Log;
-import com.klinker.android.logger.OnLogListener;
+import android.util.Log;
 import com.klinker.android.send_message.ApnUtils;
 import com.klinker.android.send_message.Message;
 import com.klinker.android.send_message.Transaction;
@@ -150,14 +149,6 @@ public class MainActivity extends Activity {
     }
 
     private void initLogging() {
-        Log.setDebug(true);
-        Log.setPath("messenger_log.txt");
-        Log.setLogListener(new OnLogListener() {
-            @Override
-            public void onLogged(String tag, String message) {
-                //logAdapter.addItem(tag + ": " + message);
-            }
-        });
     }
 
     private void setDefaultSmsApp() {

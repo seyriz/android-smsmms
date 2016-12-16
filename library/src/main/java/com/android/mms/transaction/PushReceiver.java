@@ -40,7 +40,7 @@ import android.text.TextUtils;
 import com.android.mms.service_alt.DownloadRequest;
 import com.android.mms.service_alt.MmsNetworkManager;
 import com.android.mms.service_alt.MmsRequestManager;
-import com.klinker.android.logger.Log;
+import android.util.Log;
 
 import com.android.mms.LogTag;
 import com.android.mms.MmsConfig;

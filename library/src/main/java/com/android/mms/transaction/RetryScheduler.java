@@ -31,7 +31,7 @@ import android.net.Uri;
 import android.provider.Telephony.Mms;
 import android.provider.Telephony.MmsSms;
 import android.provider.Telephony.MmsSms.PendingMessages;
-import com.klinker.android.logger.Log;
+import android.util.Log;
 
 import com.android.mms.LogTag;
 import com.android.mms.util.DownloadManager;

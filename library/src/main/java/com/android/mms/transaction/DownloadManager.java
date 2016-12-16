@@ -13,7 +13,7 @@ import android.telephony.SmsManager;
 import android.text.TextUtils;
 
 import com.android.mms.MmsConfig;
-import com.klinker.android.logger.Log;
+import android.util.Log;
 import com.klinker.android.send_message.MmsReceivedReceiver;
 
 import java.io.File;

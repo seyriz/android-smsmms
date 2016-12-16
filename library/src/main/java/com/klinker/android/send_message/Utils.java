@@ -24,7 +24,7 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
-import com.klinker.android.logger.Log;
+import android.util.Log;
 import com.google.android.mms.util_alt.SqliteWrapper;
 
 import java.io.IOException;

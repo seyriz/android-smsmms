@@ -20,7 +20,7 @@ import com.android.mms.LogTag;
 
 import android.content.Context;
 import android.util.Config;
-import com.klinker.android.logger.Log;
+import android.util.Log;
 
 /**
  * Default retry scheme, based on specs.
